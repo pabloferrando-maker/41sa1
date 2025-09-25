@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refugio 7 - Terminal de Seguridad Nuclear</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #111;
+            color: #0f0;
+            text-shadow: 0 0 5px #0f0, 0 0 10px #0f0;
+        }
+        .terminal-screen {
+            background: rgba(0, 20, 0, 0.75);
+            border: 2px solid #0f0;
+            box-shadow: 0 0 15px #0f0 inset;
+            position: relative;
+            overflow: hidden;
+        }
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #0f0;
+            opacity: 0.1;
+            animation: scan 4s linear infinite;
+        }
+        .noise {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 600'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='10' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(100vh); }
+        }
+        .btn-terminal {
+            border: 1px solid #0f0;
+            background: transparent;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-terminal:hover, .btn-terminal:focus {
+            background: #0f0;
+            color: #111;
+            text-shadow: none;
+        }
+        input[type="text"] {
+            background: transparent;
+            border: 1px solid #0f0;
+            caret-color: #0f0;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            box-shadow: 0 0 10px #0f0;
+        }
+        .life-icon-active {
+            filter: drop-shadow(0 0 5px #0f0);
+        }
+        .life-icon-inactive {
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="game-container" class="terminal-screen p-6 rounded-lg max-w-4xl mx-auto">
+        <div class="scanline"></div>
+        <div class="noise"></div>
+        
+        <!-- Pantalla de Inicio -->
+        <div id="start-screen">
+            <h1 class="text-3xl md:text-4xl mb-4">[TERMINAL DE SEGURIDAD DEL REFUGIO 7]</h1>
+            <p class="mb-2 text-lg">> CARGANDO PROTOCOLO DE ACCESO AL ALMACÉN NUCLEAR...</p>
+            <p class="mb-2 text-lg">> AÑO: 2277. BIENVENIDO, SUPERVIVIENTE.</p>
+            <p class="mb-4 text-lg">> ADVERTENCIA: Se requiere anulación manual de 4 compuertas de seguridad. La autenticación se basa en conocimientos de química atómica pre-guerra. Fallos múltiples activarán las contramedidas... letales.</p>
+            <p class="mb-6 text-lg">> ¿Estás listo para proceder?</p>
+            <button id="start-button" class="btn-terminal text-xl">INICIAR SECUENCIA DE ANULACIÓN</button>
+        </div>
+
+        <!-- Pantalla de Juego -->
+        <div id="game-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="door-title" class="text-2xl"></h2>
+                <div id="lives-container" class="flex space-x-2">
+                    <!-- Los iconos de vida se generan aquí -->
+                </div>
+            </div>
+            <div class="border-t border-b border-dashed border-green-500 py-4 my-4">
+                <p class="text-lg mb-4" id="question-prompt"></p>
+                <div class="flex items-center">
+                    <span class="text-xl mr-2">&gt;</span>
+                    <input type="text" id="answer-input" class="w-full p-2 text-lg bg-transparent border border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+            </div>
+            <button id="submit-button" class="btn-terminal mt-4">DESBLOQUEAR</button>
+            <div id="feedback-message" class="mt-4 text-lg h-16"></div>
+        </div>
+
+        <!-- Pantalla de Fin de Juego -->
+        <div id="game-over-screen" class="hidden text-center">
+            <h1 class="text-5xl text-red-500" style="text-shadow: 0 0 5px #f00;">[ACCESO DENEGADO]</h1>
+            <p class="text-xl mt-4">ERROR CRÍTICO EN LA COMPUERTA.</p>
+            <p class="text-xl mt-2">...Se han activado las torretas de defensa automáticas.</p>
+            <p class="text-xl mt-2">Tu aventura en el Yermo ha terminado abruptamente.</p>
+            <button id="restart-button-lose" class="btn-terminal mt-8 text-xl">REINTENTAR SECUENCIA</button>
+        </div>
+        
+        <!-- Pantalla de Victoria -->
+        <div id="win-screen" class="hidden text-center">
+            <h1 class="text-5xl">[ACCESO CONCEDIDO]</h1>
+            <p class="text-xl mt-4">SECUENCIA DE ANULACIÓN COMPLETA.</p>
+            <p class="text-xl mt-2">Las puertas del almacén nuclear se abren ante ti. El conocimiento del pasado te ha otorgado el poder del futuro.</p>
+            <p class="text-xl mt-2">Has sobrevivido... por ahora.</p>
+            <button id="restart-button-win" class="btn-terminal mt-8 text-xl">VOLVER A EMPEZAR</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DEL JUEGO ---
+        const questions = [
+            {
+                door: 1,
+                title: "COMPUERTA ALPHA",
+                prompt: "El átomo de Sodio (Na) tiene un número atómico Z=11. Escribe su configuración electrónica completa. (Formato: 1s2 2s2...)",
+                answer: "1s22s22p63s1", // Se normalizará la respuesta del usuario
+                feedback: "NEGATIVO. Recuerda el Principio de Aufbau: los orbitales se llenan en orden de energía creciente (1s, 2s, 2p, 3s...)."
+            },
+            {
+                door: 2,
+                title: "COMPUERTA BETA",
+                prompt: "Para el último electrón de un átomo de Cloro (Cl, Z=17), ¿cuáles son los valores del número cuántico principal (n) y el azimutal (l)? (Introduce los dos números separados por una coma. Ej: 3,1)",
+                answer: "3,1",
+                feedback: "CÁLCULO INCORRECTO. El número cuántico principal 'n' indica el nivel de energía. El azimutal 'l' define la forma del orbital (0=s, 1=p, 2=d...)."
+            },
+            {
+                door: 3,
+                title: "COMPUERTA GAMMA",
+                prompt: "¿Cuántos electrones desapareados tiene un átomo de Nitrógeno (N, Z=7) en su estado fundamental? (Introduce solo el número)",
+                answer: "3",
+                feedback: "ERROR DE LÓGICA. Aplica la Regla de Máxima Multiplicidad de Hund: los electrones ocupan orbitales de la misma energía de forma individual antes de aparearse."
+            },
+            {
+                door: 4,
+                title: "NÚCLEO DEL REACTOR",
+                prompt: "La seguridad del refugio detecta un elemento cuyo último electrón tiene los números cuánticos: n=3, l=2. Se trata del TERCER electrón en ese subnivel (3d). ¿Cuál es su número atómico (Z)?",
+                answer: "23",
+                feedback: "ANÁLISIS FALLIDO. Reconstruye la configuración electrónica completa hasta [Ar] 4s2 3d3. La suma total de electrones es Z."
+            }
+        ];
+        
+        const MAX_LIVES = 3;
+
+        // --- ESTADO DEL JUEGO ---
+        let gameState = {
+            currentDoorIndex: 0,
+            lives: 0,
+            gameActive: false
+        };
+
+        // --- ELEMENTOS DEL DOM ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const winScreen = document.getElementById('win-screen');
+        
+        const doorTitle = document.getElementById('door-title');
+        const livesContainer = document.getElementById('lives-container');
+        const questionPrompt = document.getElementById('question-prompt');
+        const answerInput = document.getElementById('answer-input');
+        const feedbackMessage = document.getElementById('feedback-message');
+
+        const startButton = document.getElementById('start-button');
+        const submitButton = document.getElementById('submit-button');
+        const restartButtonLose = document.getElementById('restart-button-lose');
+        const restartButtonWin = document.getElementById('restart-button-win');
+
+        // --- LÓGICA DEL JUEGO ---
+        function typeWriterEffect(element, text, speed = 30) {
+            element.innerHTML = "";
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        function initGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            
+            gameState.currentDoorIndex = 0;
+            gameState.gameActive = true;
+            
+            loadDoor();
+        }
+
+        function loadDoor() {
+            if (gameState.currentDoorIndex >= questions.length) {
+                winGame();
+                return;
+            }
+            
+            gameState.lives = MAX_LIVES;
+            updateLivesDisplay();
+            
+            const currentQuestion = questions[gameState.currentDoorIndex];
+            doorTitle.textContent = currentQuestion.title;
+            typeWriterEffect(questionPrompt, currentQuestion.prompt);
+            answerInput.value = '';
+            answerInput.focus();
+            feedbackMessage.textContent = "> Esperando entrada...";
+        }
+
+        function updateLivesDisplay() {
+            livesContainer.innerHTML = '';
+            for (let i = 0; i < MAX_LIVES; i++) {
+                const lifeIcon = document.createElement('div');
+                lifeIcon.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 ${i < gameState.lives ? 'life-icon-active' : 'life-icon-inactive'}" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-7.536 5.464a.5.5 0 01.707 0L10 12.707l2.828-2.829a.5.5 0 11.708.708L10.707 13.414a.5.5 0 01-.707 0L6.757 10.172a.5.5 0 010-.708z" clip-rule="evenodd" />
+                    </svg>`; // Icono de Vault Boy simplificado
+                livesContainer.appendChild(lifeIcon);
+            }
+        }
+
+        function checkAnswer() {
+            if (!gameState.gameActive) return;
+
+            const currentQuestion = questions[gameState.currentDoorIndex];
+            // Normalizar respuesta: quitar espacios y a minúsculas
+            const userAnswer = answerInput.value.replace(/\s+/g, '').toLowerCase();
+
+            if (userAnswer === currentQuestion.answer) {
+                handleCorrectAnswer();
+            } else {
+                handleIncorrectAnswer(currentQuestion.feedback);
+            }
+        }
+
+        function handleCorrectAnswer() {
+            feedbackMessage.style.color = "#0f0";
+            typeWriterEffect(feedbackMessage, "> CÓDIGO ACEPTADO. COMPUERTA DESBLOQUEADA.");
+            gameState.currentDoorIndex++;
+            
+            setTimeout(() => {
+                loadDoor();
+            }, 2000); // Espera 2 segundos antes de cargar la siguiente puerta
+        }
+
+        function handleIncorrectAnswer(feedback) {
+            gameState.lives--;
+            updateLivesDisplay();
+            
+            feedbackMessage.style.color = "#f00"; // Rojo para errores
+            
+            if (gameState.lives > 0) {
+                typeWriterEffect(feedbackMessage, `> ACCESO DENEGADO. ${feedback}`);
+                answerInput.value = '';
+                answerInput.focus();
+            } else {
+                gameOver();
+            }
+        }
+
+        function gameOver() {
+            gameState.gameActive = false;
+            gameScreen.classList.add('hidden');
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function winGame() {
+            gameState.gameActive = false;
+            gameScreen.classList.add('hidden');
+            winScreen.classList.remove('hidden');
+        }
+
+        // --- EVENT LISTENERS ---
+        startButton.addEventListener('click', initGame);
+        submitButton.addEventListener('click', checkAnswer);
+        answerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                checkAnswer();
+            }
+        });
+        restartButtonLose.addEventListener('click', initGame);
+        restartButtonWin.addEventListener('click', initGame);
+
+    </script>
+</body>
+</html>
