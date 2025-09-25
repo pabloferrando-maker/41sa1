@@ -123,8 +123,8 @@
         <div id="win-screen" class="hidden text-center">
             <h1 class="text-5xl">[ACCESO CONCEDIDO]</h1>
             <p class="text-xl mt-4">SECUENCIA DE ANULACIÓN COMPLETA.</p>
-            <p class="text-xl mt-2">Las puertas del almacén nuclear se abren ante ti. El conocimiento del pasado te ha otorgado el poder del futuro.</p>
-            <p class="text-xl mt-2">Has sobrevivido... por ahora.</p>
+            <p class="text-xl mt-2">Has demostrado tu valía. Se te otorga el primer dígito del código maestro del almacén.</p>
+            <p class="text-6xl mt-6 text-yellow-300" style="text-shadow: 0 0 10px #ff0;">1</p>
             <button id="restart-button-win" class="btn-terminal mt-8 text-xl">VOLVER A EMPEZAR</button>
         </div>
 
@@ -230,6 +230,7 @@
             answerInput.value = '';
             answerInput.focus();
             feedbackMessage.textContent = "> Esperando entrada...";
+            gameState.gameActive = true;
         }
 
         function updateLivesDisplay() {
@@ -259,13 +260,14 @@
         }
 
         function handleCorrectAnswer() {
+            gameState.gameActive = false; // Desactivar input durante la transición
             feedbackMessage.style.color = "#0f0";
             typeWriterEffect(feedbackMessage, "> CÓDIGO ACEPTADO. COMPUERTA DESBLOQUEADA.");
             gameState.currentDoorIndex++;
             
             setTimeout(() => {
                 loadDoor();
-            }, 2000); // Espera 2 segundos antes de cargar la siguiente puerta
+            }, 2000); 
         }
 
         function handleIncorrectAnswer(feedback) {
@@ -309,3 +311,4 @@
     </script>
 </body>
 </html>
+
